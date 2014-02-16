@@ -29,7 +29,7 @@ function New-Abstraction
 
     $al = Get-PSAL
 
-    Microsoft.PowerShell.Management\Set-Item Function:\script:$newCommandName -value "$cmdLetBinding `r`n param ( $params )Process{ `r`n$newContent}"
+    Microsoft.PowerShell.Management\Set-Item Function:\global:$newCommandName -value "$cmdLetBinding `r`n param ( $params )Process{ `r`n$newContent}"
 
     $al.Abstractions += @(New-Object PSObject | Select-Object @{Name="Name";Expression={$newCommandName}},@{Name="AbstractedCommand";Expression={$origCommand}})
 }
@@ -51,7 +51,7 @@ function Set-AbstractionLayer
 }
 
 function Add-Abstraction {
-    param(  [Parameters(Mandatory=$true)]
+    param(  [Parameter(Mandatory=$true)]
             [string]$Name,
             [Parameter(Mandatory=$true)]
             [System.Management.Automation.CommandInfo]$command)
@@ -60,10 +60,30 @@ function Add-Abstraction {
 }
 
 function Get-Abstraction {
-    param(  [Parameters(mandatory=$true)]
+    param(  [Parameter(mandatory=$true)]
             [string]$abstractionName)
 
     (Get-PSAL).Abstractions | where { $_.Name -eq $cmdName } | Select-Object -First 1
+}
+
+function Invoke-Abstraction 
+{ 
+    param(  [Parameter(Mandatory=$true)]
+            [string]$cmdName)
+
+    if(Test-PSAL)
+    { 
+        if(Test-PSALStatus) 
+        { 
+            Write-Host ("`t{0} called:" -f $cmdName) -ForegroundColor DarkCyan 
+            $PSBoundParameters.Keys | foreach { Write-Host ("`t`t{0}: {1}" -f $_,$PSBoundParameters[$_]) -ForegroundColor DarkGray }
+        }
+        else
+        {
+            $abstraction = Get-Abstraction $cmdName
+            &($abstraction.AbstractedCommand.Name) @PSBoundParameters
+        }
+    }
 }
 
 function Get-PSAL {
@@ -78,22 +98,9 @@ function Test-PSALStatus {
     return (Get-PSAL).IsAbstracting
 }
 
-function AbstractionPrototype 
-{ 
-    if(-Not (Test-PSAL))
-    { 
-        $cmdName = $MyInvocation.MyCommand.Name 
-        if(Test-PSALStatus -eq $true) 
-        { 
-            Write-Host ("`t{0} called:" -f $cmdName) -ForegroundColor DarkCyan 
-            $PSBoundParameters.Keys | foreach { Write-Host ("`t`t{0}: {1}" -f $_,$PSBoundParameters[$_]) -ForegroundColor DarkGray }
-        }
-        else
-        {
-            $abstraction = Get-Abstraction $cmdName
-            &($abstraction.AbstractedCommand.Name) @PSBoundParameters
-        }
-    }
+function AbstractionPrototype
+{
+    Invoke-Abstraction $MyInvocation.MyCommand.Name
 }
 
-Export-ModuleMember "New-Abstraction","Enable-AbstractionLayer","Disable-AbstractionLayer","Set-AbstractionLayer","Test-PSALStatus" -Variable PSAL
+Export-ModuleMember "New-Abstraction","Enable-AbstractionLayer","Disable-AbstractionLayer","Set-AbstractionLayer","Test-PSALStatus","Invoke-Abstraction"
