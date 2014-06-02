@@ -1,4 +1,4 @@
-**PSAL**
+**PSAL**[![Build status](https://ci.appveyor.com/api/projects/status/xevgopsrsx2opo30)](https://ci.appveyor.com/project/mitchelldavis/psal)
 *PowerShell Abstraction Layer*
 
 Using the abstraction layer is easy.  Once the module is imported, you can begin to create abstracted commands and functions.
